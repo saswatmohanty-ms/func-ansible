@@ -1,0 +1,51 @@
+---
+- name: Sample Ansible Playbook for Windows
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  
+  tasks:
+    - name: Get current user
+      win_shell: whoami
+      register: current_user
+    
+    - name: Display current user
+      debug:
+        msg: "Current user is {{ current_user.stdout }}"
+    
+    - name: Get system information
+      win_shell: systeminfo | findstr /B /C:"OS Name" /C:"OS Version"
+      register: system_info
+    
+    - name: Display system information
+      debug:
+        msg: "System info: {{ system_info.stdout }}"
+    
+    - name: Create test directory if it doesn't exist
+      win_shell: |
+        if (-not (Test-Path -Path "C:\AnsibleTest")) {
+            New-Item -ItemType Directory -Path "C:\AnsibleTest" -Force
+        }
+    
+    - name: Create test file to demonstrate domain user permissions
+      win_shell: |
+        $content = "File created by Ansible running as $(whoami) at $(Get-Date)"
+        Set-Content -Path "C:\AnsibleTest\test.txt" -Value $content
+        "File created successfully"
+    
+    - name: Read test file
+      win_shell: Get-Content -Path "C:\AnsibleTest\test.txt"
+      register: file_content
+    
+    - name: Display file content
+      debug:
+        msg: "File content: {{ file_content.stdout }}"
+        
+    - name: Execute domain-specific command (Active Directory query)
+      win_shell: Get-ADUser -Filter "SamAccountName -eq 'test'" -Properties * | Select-Object SamAccountName, DisplayName, Enabled
+      register: ad_user
+      ignore_errors: yes
+      
+    - name: Display AD user info
+      debug:
+        msg: "AD User info: {{ ad_user.stdout | default('AD cmdlets not available or user not found') }}"
